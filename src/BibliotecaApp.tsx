@@ -1,176 +1,211 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Save, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, List } from 'lucide-react';
 
-// Tipagem da Unidade
+// Tipagem
 type Unidade = {
   codigo: number;
   nomeUnidade: string;
   endereco: string;
   telefone: number;
   bibliotecaria_responsavel: number;
+  nome_bibliotecaria: string;
+};
+
+type Bibliotecaria = {
+  matricula: number;
+  nome: string;
 };
 
 const BibliotecaApp = () => {
   const [unidades, setUnidades] = useState<Unidade[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [bibliotecarias, setBibliotecarias] = useState<Bibliotecaria[]>([]);
+  const [showList, setShowList] = useState<'unidades' | 'bibliotecarias'>('unidades');
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAddBibliotecaria, setShowAddBibliotecaria] = useState(false);
-
-  const [formData, setFormData] = useState({
-    codigo: '',
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingBibliotecaria, setEditingBibliotecaria] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({
     nomeUnidade: '',
     endereco: '',
     telefone: '',
-    bibliotecaria_responsavel: ''
+    bibliotecaria_responsavel: '',
   });
-
-  const [bibliotecariaForm, setBibliotecariaForm] = useState({
-    matricula: '',
+  const [editBibliotecariaForm, setEditBibliotecariaForm] = useState({
     nome: ''
   });
+
+  const [codigoUnidade, setCodigoUnidade] = useState('');
+  const [nomeUnidade, setNomeUnidade] = useState('');
+  const [endereco, setEndereco] = useState('');
+  const [telefone, setTelefone] = useState('');
+  const [bibliotecariaResp, setBibliotecariaResp] = useState<number | ''>('');
+
+  const [matriculaBibliotecaria, setMatriculaBibliotecaria] = useState('');
+  const [nomeBibliotecaria, setNomeBibliotecaria] = useState('');
 
   const API_BASE = 'http://localhost:8080/biblioteca/unidades';
   const API_BIBLIO = 'http://localhost:8080/biblioteca/bibliotecarios';
 
-  const carregarUnidades = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(API_BASE);
-      if (response.ok) {
-        const data = await response.json();
-        setUnidades(data);
-      }
-    } catch (error: any) {
-      alert('Erro ao carregar unidades: ' + error.message);
-    }
-    setLoading(false);
-  };
-
   useEffect(() => {
     carregarUnidades();
+    carregarBibliotecarias();
   }, []);
 
-  const adicionarUnidade = async () => {
+  const carregarUnidades = async () => {
     try {
-      const response = await fetch(API_BASE, {
+      const res = await fetch(API_BASE);
+      const data = await res.json();
+      setUnidades(data);
+    } catch {
+      alert('Erro ao carregar unidades.');
+    }
+  };
+
+  const carregarBibliotecarias = async () => {
+    try {
+      const res = await fetch(API_BIBLIO);
+      const data = await res.json();
+      setBibliotecarias(data);
+    } catch {
+      alert('Erro ao carregar bibliotecárias.');
+    }
+  };
+
+  const adicionarUnidade = async () => {
+    if (!codigoUnidade || !nomeUnidade || !endereco || !telefone || bibliotecariaResp === '') {
+      alert('Preencha todos os campos da unidade!');
+      return;
+    }
+    try {
+      const res = await fetch(API_BASE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...formData,
-          codigo: parseInt(formData.codigo),
-          telefone: parseInt(formData.telefone),
-          bibliotecaria_responsavel: parseInt(formData.bibliotecaria_responsavel)
-        })
+          codigo: Number(codigoUnidade),
+          nomeUnidade,
+          endereco,
+          telefone: Number(telefone),
+          bibliotecaria_responsavel: Number(bibliotecariaResp),
+        }),
       });
-
-      if (response.ok) {
-        await carregarUnidades();
-        setShowAddForm(false);
-        limparFormulario();
-        alert('Unidade adicionada com sucesso!');
-      } else {
-        alert('Erro ao adicionar unidade');
-      }
-    } catch (error: any) {
-      alert('Erro: ' + error.message);
+      if (!res.ok) throw new Error();
+      await carregarUnidades();
+      setShowAddForm(false);
+      setCodigoUnidade('');
+      setNomeUnidade('');
+      setEndereco('');
+      setTelefone('');
+      setBibliotecariaResp('');
+    } catch {
+      alert('Erro ao adicionar unidade.');
     }
   };
 
   const adicionarBibliotecaria = async () => {
+    if (!matriculaBibliotecaria || !nomeBibliotecaria) {
+      alert('Preencha todos os campos da bibliotecária!');
+      return;
+    }
     try {
-      const response = await fetch(API_BIBLIO, {
+      const res = await fetch(API_BIBLIO, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          matricula: parseInt(bibliotecariaForm.matricula),
-          nome: bibliotecariaForm.nome
-        })
+          matricula: Number(matriculaBibliotecaria),
+          nome: nomeBibliotecaria,
+        }),
       });
-
-      if (response.ok) {
-        alert('Bibliotecária adicionada com sucesso!');
-        setBibliotecariaForm({ matricula: '', nome: '' });
-        setShowAddBibliotecaria(false);
-      } else {
-        alert('Erro ao adicionar bibliotecária');
-      }
-    } catch (error: any) {
-      alert('Erro: ' + error.message);
-    }
-  };
-
-  const atualizarUnidade = async (codigo: number) => {
-    try {
-      const response = await fetch(`${API_BASE}/${codigo}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          codigo: parseInt(codigo.toString()),
-          telefone: parseInt(formData.telefone),
-          bibliotecaria_responsavel: parseInt(formData.bibliotecaria_responsavel)
-        })
-      });
-
-      if (response.ok) {
-        await carregarUnidades();
-        setEditingId(null);
-        limparFormulario();
-        alert('Unidade atualizada com sucesso!');
-      } else {
-        alert('Erro ao atualizar unidade');
-      }
-    } catch (error: any) {
-      alert('Erro: ' + error.message);
+      if (!res.ok) throw new Error();
+      await carregarBibliotecarias();
+      setShowAddBibliotecaria(false);
+      setMatriculaBibliotecaria('');
+      setNomeBibliotecaria('');
+    } catch {
+      alert('Erro ao adicionar bibliotecária.');
     }
   };
 
   const excluirUnidade = async (codigo: number) => {
     if (window.confirm('Tem certeza que deseja excluir esta unidade?')) {
       try {
-        const response = await fetch(`${API_BASE}/${codigo}`, {
-          method: 'DELETE'
-        });
-
-        if (response.ok) {
-          await carregarUnidades();
-          alert('Unidade excluída com sucesso!');
-        } else {
-          alert('Erro ao excluir unidade');
-        }
-      } catch (error: any) {
-        alert('Erro: ' + error.message);
+        const res = await fetch(`${API_BASE}/${codigo}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error();
+        carregarUnidades();
+      } catch {
+        alert('Erro ao excluir unidade. Verifique se ela não está vinculada a outras entidades.');
       }
     }
   };
 
-  const iniciarEdicao = (unidade: Unidade) => {
-    setFormData({
-      codigo: unidade.codigo.toString(),
-      nomeUnidade: unidade.nomeUnidade,
-      endereco: unidade.endereco,
-      telefone: unidade.telefone.toString(),
-      bibliotecaria_responsavel: unidade.bibliotecaria_responsavel.toString()
-    });
-    setEditingId(unidade.codigo);
+  const excluirBibliotecaria = async (matricula: number) => {
+    if (window.confirm('Tem certeza que deseja excluir esta bibliotecária?')) {
+      try {
+        const res = await fetch(`${API_BIBLIO}/${matricula}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error();
+        carregarBibliotecarias();
+      } catch {
+        alert('Erro ao excluir bibliotecária. Verifique se ela não está vinculada a uma unidade.');
+      }
+    }
   };
 
-  const cancelarEdicao = () => {
-    setEditingId(null);
-    setShowAddForm(false);
-    setShowAddBibliotecaria(false);
-    limparFormulario();
+  const iniciarEdicaoUnidade = (u: Unidade) => {
+    setEditingId(u.codigo);
+    setEditForm({
+      nomeUnidade: u.nomeUnidade,
+      endereco: u.endereco,
+      telefone: u.telefone.toString(),
+      bibliotecaria_responsavel: u.bibliotecaria_responsavel.toString(),
+    });
   };
 
-  const limparFormulario = () => {
-    setFormData({
-      codigo: '',
-      nomeUnidade: '',
-      endereco: '',
-      telefone: '',
-      bibliotecaria_responsavel: ''
-    });
+  const salvarEdicaoUnidade = async (codigo: number) => {
+    if (!window.confirm('Deseja realmente salvar as alterações desta unidade?')) return;
+    try {
+      const res = await fetch(`${API_BASE}/${codigo}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          codigo,
+          nomeUnidade: editForm.nomeUnidade,
+          endereco: editForm.endereco,
+          telefone: Number(editForm.telefone),
+          bibliotecaria_responsavel: Number(editForm.bibliotecaria_responsavel),
+        }),
+      });
+      if (!res.ok) throw new Error();
+      setEditingId(null);
+      await carregarUnidades();
+      alert('Unidade alterada com sucesso!');
+    } catch {
+      alert('Erro ao salvar alterações.');
+    }
+  };
+  
+  const iniciarEdicaoBibliotecaria = (b: Bibliotecaria) => {
+    setEditingBibliotecaria(b.matricula);
+    setEditBibliotecariaForm({ nome: b.nome });
+  };
+
+  const salvarEdicaoBibliotecaria = async (matricula: number) => {
+    if (!window.confirm('Deseja realmente salvar as alterações desta bibliotecária?')) return;
+    try {
+      const res = await fetch(`${API_BIBLIO}/${matricula}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          matricula,
+          nome: editBibliotecariaForm.nome,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      setEditingBibliotecaria(null);
+      await carregarBibliotecarias();
+      await carregarUnidades(); 
+      alert('Bibliotecária alterada com sucesso!');
+    } catch {
+      alert('Erro ao salvar bibliotecária.');
+    }
   };
 
   return (
@@ -178,62 +213,60 @@ const BibliotecaApp = () => {
       <div className="content-wrapper">
         <div className="card">
           <h1>Sistema de Biblioteca</h1>
-          <p>Gerenciamento de Unidades de Atendimento</p>
+          <h2>Daniel Junio Barbosa Souza Filho</h2>
         </div>
 
         <div className="card" style={{ display: 'flex', gap: '1rem' }}>
-          <button onClick={() => setShowAddForm(true)} className="btn-blue">
-            <Plus size={20} /> Nova Unidade
+          <button onClick={() => { setShowList('unidades'); setShowAddForm(false); setShowAddBibliotecaria(false); }} className="btn-blue">
+            <List size={16} /> Ver Unidades
           </button>
-          <button onClick={() => setShowAddBibliotecaria(true)} className="btn-purple">
-            <Plus size={20} /> Nova Bibliotecária
+          <button onClick={() => { setShowList('bibliotecarias'); setShowAddForm(false); setShowAddBibliotecaria(false); }} className="btn-purple">
+            <List size={16} /> Ver Bibliotecárias
+          </button>
+          <button onClick={() => {
+            if (showList === 'unidades') {
+              setShowAddForm(true);
+              setShowAddBibliotecaria(false);
+            } else {
+              setShowAddForm(false);
+              setShowAddBibliotecaria(true);
+            }
+          }} className="btn-green">
+            <Plus size={16} /> {showList === 'unidades' ? 'Nova Unidade' : 'Nova Bibliotecária'}
           </button>
         </div>
 
         {showAddForm && (
           <div className="card">
-            <h2>Adicionar Nova Unidade</h2>
-            <div className="form-grid">
-              <input type="number" placeholder="Código" value={formData.codigo} onChange={(e) => setFormData({ ...formData, codigo: e.target.value })} />
-              <input type="text" placeholder="Nome da Unidade" value={formData.nomeUnidade} onChange={(e) => setFormData({ ...formData, nomeUnidade: e.target.value })} />
-              <input type="text" placeholder="Endereço" value={formData.endereco} onChange={(e) => setFormData({ ...formData, endereco: e.target.value })} />
-              <input type="number" placeholder="Telefone" value={formData.telefone} onChange={(e) => setFormData({ ...formData, telefone: e.target.value })} />
-              <input type="number" placeholder="Bibliotecária Responsável" value={formData.bibliotecaria_responsavel} onChange={(e) => setFormData({ ...formData, bibliotecaria_responsavel: e.target.value })} />
-            </div>
-            <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
-              <button onClick={adicionarUnidade} className="btn-green">
-                <Save size={16} /> Salvar
-              </button>
-              <button onClick={cancelarEdicao} className="btn-gray">
-                <X size={16} /> Cancelar
-              </button>
-            </div>
+            <h3>Nova Unidade</h3>
+            <input type="number" placeholder="Código" value={codigoUnidade} onChange={(e) => setCodigoUnidade(e.target.value)} />
+            <input type="text" placeholder="Nome" value={nomeUnidade} onChange={(e) => setNomeUnidade(e.target.value)} />
+            <input type="text" placeholder="Endereço" value={endereco} onChange={(e) => setEndereco(e.target.value)} />
+            <input type="text" placeholder="Telefone" value={telefone} onChange={(e) => setTelefone(e.target.value)} />
+            <select value={bibliotecariaResp} onChange={(e) => setBibliotecariaResp(Number(e.target.value))}>
+              <option value="">Selecione a Bibliotecária Responsável</option>
+              {bibliotecarias.map((b) => (
+                <option key={b.matricula} value={b.matricula}>{b.nome}</option>
+              ))}
+            </select>
+            <button className="btn-green" onClick={adicionarUnidade}>Salvar</button>
+            <button className="btn-red" onClick={() => setShowAddForm(false)}>Cancelar</button>
           </div>
         )}
 
         {showAddBibliotecaria && (
           <div className="card">
-            <h2>Adicionar Nova Bibliotecária</h2>
-            <div className="form-grid">
-              <input type="number" placeholder="Matrícula" value={bibliotecariaForm.matricula} onChange={(e) => setBibliotecariaForm({ ...bibliotecariaForm, matricula: e.target.value })} />
-              <input type="text" placeholder="Nome" value={bibliotecariaForm.nome} onChange={(e) => setBibliotecariaForm({ ...bibliotecariaForm, nome: e.target.value })} />
-            </div>
-            <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
-              <button onClick={adicionarBibliotecaria} className="btn-green">
-                <Save size={16} /> Salvar
-              </button>
-              <button onClick={cancelarEdicao} className="btn-gray">
-                <X size={16} /> Cancelar
-              </button>
-            </div>
+            <h3>Nova Bibliotecária</h3>
+            <input type="number" placeholder="Matrícula" value={matriculaBibliotecaria} onChange={(e) => setMatriculaBibliotecaria(e.target.value)} />
+            <input type="text" placeholder="Nome" value={nomeBibliotecaria} onChange={(e) => setNomeBibliotecaria(e.target.value)} />
+            <button className="btn-green" onClick={adicionarBibliotecaria}>Salvar</button>
+            <button className="btn-red" onClick={() => setShowAddBibliotecaria(false)}>Cancelar</button>
           </div>
         )}
 
-        <div className="card">
-          <h2>Unidades de Atendimento</h2>
-          {loading ? (
-            <div><div className="loader"></div><p className="text-center">Carregando...</p></div>
-          ) : (
+        {showList === 'unidades' && (
+          <div className="card">
+            <h2>Unidades de Atendimento</h2>
             <table className="table">
               <thead>
                 <tr>
@@ -246,30 +279,29 @@ const BibliotecaApp = () => {
                 </tr>
               </thead>
               <tbody>
-                {unidades.map((unidade) => (
-                  <tr key={unidade.codigo}>
-                    {editingId === unidade.codigo ? (
+                {unidades.map((u) => (
+                  <tr key={u.codigo}>
+                    <td>{u.codigo}</td>
+                    {editingId === u.codigo ? (
                       <>
-                        <td>{unidade.codigo}</td>
-                        <td><input type="text" value={formData.nomeUnidade} onChange={(e) => setFormData({ ...formData, nomeUnidade: e.target.value })} /></td>
-                        <td><input type="text" value={formData.endereco} onChange={(e) => setFormData({ ...formData, endereco: e.target.value })} /></td>
-                        <td><input type="number" value={formData.telefone} onChange={(e) => setFormData({ ...formData, telefone: e.target.value })} /></td>
-                        <td><input type="number" value={formData.bibliotecaria_responsavel} onChange={(e) => setFormData({ ...formData, bibliotecaria_responsavel: e.target.value })} /></td>
+                        <td><input value={editForm.nomeUnidade} onChange={(e) => setEditForm({ ...editForm, nomeUnidade: e.target.value })} /></td>
+                        <td><input value={editForm.endereco} onChange={(e) => setEditForm({ ...editForm, endereco: e.target.value })} /></td>
+                        <td><input value={editForm.telefone} onChange={(e) => setEditForm({ ...editForm, telefone: e.target.value })} /></td>
+                        <td><input value={editForm.bibliotecaria_responsavel} onChange={(e) => setEditForm({ ...editForm, bibliotecaria_responsavel: e.target.value })} /></td>
                         <td>
-                          <button onClick={() => atualizarUnidade(unidade.codigo)} className="btn-green"><Save size={16} /></button>
-                          <button onClick={cancelarEdicao} className="btn-gray"><X size={16} /></button>
+                          <button onClick={() => salvarEdicaoUnidade(u.codigo)} className="btn-green"><Save size={16} /></button>
+                          <button onClick={() => setEditingId(null)} className="btn-gray"><X size={16} /></button>
                         </td>
                       </>
                     ) : (
                       <>
-                        <td>{unidade.codigo}</td>
-                        <td>{unidade.nomeUnidade}</td>
-                        <td>{unidade.endereco}</td>
-                        <td>{unidade.telefone}</td>
-                        <td>{unidade.bibliotecaria_responsavel}</td>
+                        <td>{u.nomeUnidade}</td>
+                        <td>{u.endereco}</td>
+                        <td>{u.telefone}</td>
+                        <td>{u.nome_bibliotecaria}</td>
                         <td>
-                          <button onClick={() => iniciarEdicao(unidade)} className="btn-blue"><Edit2 size={16} /></button>
-                          <button onClick={() => excluirUnidade(unidade.codigo)} className="btn-red"><Trash2 size={16} /></button>
+                          <button onClick={() => iniciarEdicaoUnidade(u)} className="btn-blue"><Edit2 size={16} /></button>
+                          <button onClick={() => excluirUnidade(u.codigo)} className="btn-red"><Trash2 size={16} /></button>
                         </td>
                       </>
                     )}
@@ -277,8 +309,47 @@ const BibliotecaApp = () => {
                 ))}
               </tbody>
             </table>
-          )}
-        </div>
+          </div>
+        )}
+
+        {showList === 'bibliotecarias' && (
+          <div className="card">
+            <h2>Bibliotecárias</h2>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Matrícula</th>
+                  <th>Nome</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bibliotecarias.map((b) => (
+                  <tr key={b.matricula}>
+                    <td>{b.matricula}</td>
+                    {editingBibliotecaria === b.matricula ? (
+                      <>
+                        <td><input value={editBibliotecariaForm.nome} onChange={(e) => setEditBibliotecariaForm({ nome: e.target.value })} /></td>
+                        <td>
+                          <button onClick={() => salvarEdicaoBibliotecaria(b.matricula)} className="btn-green"><Save size={16} /></button>
+                          <button onClick={() => setEditingBibliotecaria(null)} className="btn-gray"><X size={16} /></button>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td>{b.nome}</td>
+                        <td>
+                          <button onClick={() => iniciarEdicaoBibliotecaria(b)} className="btn-blue"><Edit2 size={16} /></button>
+                          <button onClick={() => excluirBibliotecaria(b.matricula)} className="btn-red"><Trash2 size={16} /></button>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

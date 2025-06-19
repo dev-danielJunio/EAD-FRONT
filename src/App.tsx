@@ -1,4 +1,3 @@
-import React from 'react';
 import BibliotecaApp from './BibliotecaApp';
 
 function App() {
